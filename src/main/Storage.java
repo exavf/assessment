@@ -5,18 +5,18 @@ import java.util.List;
 
 public class Storage {
 
-    private List<WorkTicket> vals = new ArrayList<>();
+    private List<WorkTicket> workTicketList = new ArrayList<>();
 
     public void add(WorkTicket tkt) {
-        vals.add(tkt);
+        workTicketList.add(tkt);
     }
 
     public WorkTicket item(int idx) {
-        WorkTicket x = vals.get(idx);
-        return x;
+        WorkTicket ticket = workTicketList.get(idx);
+        return ticket;
     }
 
     public int count() {
-        return vals.size();
+        return workTicketList.size();
     }
 }

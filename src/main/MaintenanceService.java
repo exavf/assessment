@@ -29,16 +29,16 @@ public class MaintenanceService {
 			throw new IllegalArgumentException("Invalid report");
 		}
 
-		int x = handler.calculateDetails(report);
-		String res = handler.update(report);
-		WorkTicket t = handler.record(nextId, report);
+		int effortHours = handler.calculateDetails(report);
+		String updatedPriorityValue = handler.update(report);
+		WorkTicket ticket = handler.record(nextId, report);
 
-		if (x > 0 && res != null && !res.isEmpty()) {
-			storage.add(t);
+		if (effortHours > 0 && updatedPriorityValue != null && !updatedPriorityValue.isEmpty()) {
+			storage.add(ticket);
 			nextId++;
 		}
 
-		return t;
+		return ticket;
 	}
 
 	public int estimateEffort(IssueReport report) {

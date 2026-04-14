@@ -9,15 +9,14 @@ public class WorkTicket {
     private boolean specialistNeeded;
     private boolean closeRoom;
 
-    public WorkTicket(int id, IssueReport report, String building, String roomCode,
-                      String type, int hrs, String priority,
+    public WorkTicket(int id, IssueReport report, int hrs, String priority,
                       boolean specialistNeeded, boolean closeRoom) {
 
         if (report == null) {
             throw new IllegalArgumentException("Report cannot be null");
         }
 
-        if (building == null || roomCode == null || type == null) {
+        if (report.getBuilding() == null || report.getRoomCode() == null || report.getIssueType() == null) {
             throw new IllegalArgumentException("Ticket data is incomplete");
         }
 
@@ -54,6 +53,7 @@ public class WorkTicket {
     }
 
     public String info() {
+        // NEED TO CHANGE FORMAT BUT RAN OUT OF TIME
         String p = "";
         p = p + id;
         p = p + " ";
@@ -62,6 +62,7 @@ public class WorkTicket {
         p = p + report.getRoomCode();
         p = p + " ";
         p = p + priority;
+
         return p;
     }
 }

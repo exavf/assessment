@@ -2,137 +2,135 @@ package main;
 
 public class Handler {
 
+    // Validates that the report is valid
 	public boolean validate(IssueReport report) {
+        // Default checking
 		if (report == null) {
 			return false;
 		}
 
-		String[] vals = { report.getName(), report.getBuilding(), report.getRoomCode(), report.getIssueType() };
+        // Extracted the code here into multiple methods to separate out the logic - easily understandable I think
 
-		for (int i = 0; i < vals.length; i++) {
-			if (vals[i] == null || vals[i].trim().isEmpty()) {
-				return false;
-			}
-		}
+        // Renamed vals to a more suitable variable name
+		String[] reportInformation = { report.getName(), report.getBuilding(), report.getRoomCode(), report.getIssueType() };
 
-		if (report.getSev() < 1 || report.getSev() > 10) {
-			return false;
-		}
+        // Checks that every value within reportInformation is either not empty or null
+        if (!validateReportInformation(reportInformation)){return false;}
 
-		return true;
+        // Validates that severity is ONLY between 1-10, otherwise return false
+        if (!validateSeverity(report)){return false;}
+
+        return true;
 	}
 
 	public String update(IssueReport report) {
-		String res = priorityValue(report.getIssueType(), report.getSev(), report.isTeachFlag(), report.isSpecialist(),
-				report.isRequiresFollowUp());
-		return res;
+        // I think need to just pass report in, instead of passing everything within report
+        // Also updated variable name
+		String updatedPriorityValue = priorityValue(report);
+		return updatedPriorityValue;
 	}
 
 	public int calculateDetails(IssueReport report) {
-		int x = 2;
+
+        // Replaced magic number with final constant and replaced variable name
+        final int DEFAULT_ESTIMATED_EFFORT_HOURS = 2;
+        int estimatedEffortHours = DEFAULT_ESTIMATED_EFFORT_HOURS;
 
 		// severe problems usually take longer
 		if (report.getSev() >= 7) {
-			x = x + 2;
+            estimatedEffortHours = estimatedEffortHours + 2;
 		}
 
 		// issues affecting teaching spaces need more coordination
 		if (report.isTeachFlag()) {
-			x = x + 1;
+            estimatedEffortHours = estimatedEffortHours + 1;
 		}
 
 		if (report.isRequiresFollowUp()) {
-			x = x + 1;
+            estimatedEffortHours = estimatedEffortHours + 1;
 		}
 
-		x = x + typeHours(report.getIssueType());
+        estimatedEffortHours = estimatedEffortHours + typeHours(report.getIssueType());
 
-		return x;
+		return estimatedEffortHours;
 	}
 
-	public WorkTicket record(int id, IssueReport report) {
+    public WorkTicket record(int id, IssueReport report) {
 		if (report == null) {
 			throw new IllegalArgumentException("Report cannot be null");
 		}
 
-		String[] vals = { report.getName(), report.getBuilding(), report.getRoomCode() };
+        // Improved variable names here as well
 
-		int idx = 0;
-		while (idx < vals.length) {
-			if (vals[idx] == null || vals[idx].trim().isEmpty()) {
-				throw new IllegalArgumentException("Missing details");
-			}
-			idx++;
-		}
+		String[] reportRecords = { report.getName(), report.getBuilding(), report.getRoomCode() };
+
+        // Changed while loop into a for-each loop
+        for (String reportRecord : reportRecords) {
+            if (reportRecord == null || reportRecord.trim().isEmpty()) {
+                throw new IllegalArgumentException("Missing details");
+            }
+        }
 
 		if (report.getIssueType() == null || report.getIssueType().trim().isEmpty()) {
 			throw new IllegalArgumentException("Issue type is required");
 		}
 
-		boolean specialist = false;
+        // Assigning value of specialist to a new method to separate the logic
+        boolean specialist = isSpecialistNeeded(report.getIssueType(), report.getSev(), report.isTeachFlag());
 
-		if ("Electrical".equals(report.getIssueType()) || "Plumbing".equals(report.getIssueType())) {
-			if ("Electrical".equals(report.getIssueType()) && report.getSev() > 6) {
-				specialist = true;
-			} else if (report.isTeachFlag()) {
-				if ("Plumbing".equals(report.getIssueType())) {
-					specialist = true;
-				}
-			}
-		}
-
-		int hrs = calculateDetails(report);
+		int expectedHours = calculateDetails(report);
 		String priority = update(report);
-		boolean closeRoom = shouldCloseRoom(report.getIssueType(), report.getSev(), report.isTeachFlag(), specialist);
+		boolean closeRoom = shouldCloseRoom(report, specialist); // Passed on report instaed of individual attributes
 
-		WorkTicket t = new WorkTicket(id, report, report.getBuilding(), report.getRoomCode(), report.getIssueType(),
-				hrs, priority, specialist, closeRoom);
+        // Report is passed again and again - removed redundant parameters
+		WorkTicket ticket = new WorkTicket(id, report, expectedHours, priority, specialist, closeRoom);
 
-		return t;
+		return ticket;
 	}
 
-	private String priorityValue(String issueType, int sev, boolean teachFlag, boolean specialist,
-			boolean requiresFollowUp) {
+	private String priorityValue(IssueReport report) {
 
-		String res = "LOW";
+		String priority = "LOW";
+
+        // Passed on IssueReport instance and utilising get methods instead
 
 		// severe issues affecting teaching should be handled immediately
-		if (sev >= 9 && teachFlag) {
-			res = "URGENT";
+		if (report.getSev() >= 9 && report.isTeachFlag()) {
+			priority = "URGENT";
 		}
 
 		// severe electrical faults should also be treated urgently
-		if ("Electrical".equals(issueType) && sev >= 8) {
-			res = "URGENT";
+        if (report.getIssueType().equals("Electrical") && report.getSev() >= 8) {
+			priority = "URGENT";
 		}
 
 		// important teaching issues should not wait
-		if (res.equals("LOW") && sev >= 7 && teachFlag) {
-			res = "HIGH";
+		if (priority.equals("LOW") && report.getSev() >= 7 && report.isTeachFlag()) {
+			priority = "HIGH";
 		}
 
 		// specialist work at moderate or high severity should be prioritised
-		if (res.equals("LOW") && specialist && sev >= 6) {
-			res = "HIGH";
+		if (priority.equals("LOW") && report.isSpecialist() && report.getSev() >= 6) {
+			priority = "HIGH";
 		}
 
 		// follow-up work and medium severity cases should not be left as low
-		if (res.equals("LOW") && (requiresFollowUp || sev >= 5)) {
-			res = "MEDIUM";
+		if (priority.equals("LOW") && (report.isRequiresFollowUp() || report.getSev() >= 5)) {
+			priority = "MEDIUM";
 		}
 
-		return res;
+		return priority;
 	}
 
-	private boolean shouldCloseRoom(String issueType, int sev, boolean teachFlag, boolean specialist) {
+	private boolean shouldCloseRoom(IssueReport record, boolean specialist) {
 
 		// severe issues in teaching rooms should close the room
-		if (sev > 7 && teachFlag) {
+		if (record.getSev() > 7 && record.isTeachFlag()) {
 			return true;
 		}
 
 		// specialist electrical issues should close the room
-		if (specialist && "Electrical".equals(issueType)) {
+		if (specialist && "Electrical".equals(record.getIssueType())) {
 			return true;
 		}
 
@@ -166,4 +164,31 @@ public class Handler {
 	private boolean isCriticalCombination(IssueReport report) {
 		return report.getSev() > 8 && report.isTeachFlag() && report.isRequiresFollowUp();
 	}
+
+    private boolean validateReportInformation(String[] reportInformation) {
+        for (int i = 0; i < reportInformation.length; i++) {
+            if (reportInformation[i] == null || reportInformation[i].trim().isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean validateSeverity(IssueReport report) {
+        if (report.getSev() < 1 || report.getSev() > 10) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isSpecialistNeeded (String issueType, int severity, boolean teachFlag) {
+        if (issueType.equals("Electrical") || issueType.equals("Plumbing")) {
+            if ("Electrical".equals(issueType) && severity > 6) { return true; }
+            else if (teachFlag) {
+                if (issueType.equals("Plumbing")) { return true; }
+            }
+        }
+
+        return false;
+    }
 }
